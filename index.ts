@@ -1,5 +1,4 @@
 import { BaseRootPacket } from "@nodepolus/framework/src/protocol/packets/root/baseRootPacket";
-import { SetGameOption } from "@polusgg/plugin-polusgg-api/src/packets/root/setGameOption";
 import { MessageReader } from "@nodepolus/framework/src/util/hazelMessage";
 import { Buffer } from "buffer/";
 import { RootPacket } from "@nodepolus/framework/src/protocol/packets/hazel";
@@ -17,8 +16,6 @@ export type Packet<Parsed extends boolean> = {
 
 export type Replay<PacketParsing extends boolean> = {
   version: number;
-  players: Player[];
-  gameOptions: SetGameOption[];
   packets: Packet<PacketParsing>[];
 };
 
@@ -47,38 +44,6 @@ export function parsePacket<Parsed extends boolean>(reader: MessageReader, parse
   return packet as Packet<Parsed>;
 }
 
-export function parseCosmetic(reader: MessageReader): Cosmetic {
-  const type = reader.readByte() as CosmeticType;
-
-  switch (type) {
-    case CosmeticType.PlayerColor:
-      return {
-        type,
-        color: [
-          reader.readByte(),
-          reader.readByte(),
-          reader.readByte(),
-          reader.readByte(),
-        ],
-      };
-  }
-}
-
-export function parsePlayer(reader: MessageReader): Player {
-  const player: Partial<Player> = {
-    id: reader.readByte(),
-    name: reader.readString(),
-  };
-
-  player.cosmetics = new Array(reader.readByte());
-
-  for (let i = 0; i < player.cosmetics.length; i++) {
-    player.cosmetics[i] = parseCosmetic(reader);
-  }
-
-  return player as Player;
-}
-
 export function parseFile<PacketParsing extends boolean>(arrayBuffer: ArrayBuffer, { parsePackets }: { parsePackets: PacketParsing }): Replay<PacketParsing> {
   const reader = new MessageReader(0);
 
@@ -89,18 +54,6 @@ export function parseFile<PacketParsing extends boolean>(arrayBuffer: ArrayBuffe
   const replay: Partial<Replay<PacketParsing>> = {
     version: reader.readUInt32(),
   };
-
-  replay.players = new Array(reader.readByte());
-
-  for (let i = 0; i < replay.players.length; i++) {
-    replay.players[i] = parsePlayer(reader);
-  }
-
-  replay.gameOptions = new Array(reader.readByte());
-
-  for (let i = 0; i < replay.gameOptions.length; i++) {
-    replay.gameOptions[i] = SetGameOption.deserialize(reader.readMessage()!);
-  }
 
   replay.packets = new Array(reader.readUInt32());
 
